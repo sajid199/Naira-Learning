@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Trace &amp; Discover — Learn Letters</title>
+<meta name="description" content="A playful finger-tracing game that helps young kids learn letters, words, and sounds through touch, sound, and celebration animations.">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4FD3DA">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trace & Discover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sun:#FFC93C;
+    --sky:#4FD3DA;
+    --coral:#FF6F59;
+    --grass:#8AC926;
+    --berry:#B980F0;
+    --ink:#2B2250;
+    --cloud:#FFFDF7;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0; padding:0; height:100%; width:100%;
+    overflow:hidden; overscroll-behavior:none;
+    font-family:'Nunito',sans-serif;
+    background:var(--cloud);
+    color:var(--ink);
+    touch-action:none;
+    user-select:none;
+  }
+  #app{
+    position:relative;
+    height:100dvh; width:100vw;
+    display:flex; flex-direction:column;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(255,201,60,0.35), transparent 40%),
+      radial-gradient(circle at 88% 85%, rgba(79,211,218,0.30), transparent 45%),
+      var(--cloud);
+    transition:background 0.6s ease;
+  }
+
+  /* ---------- top bar ---------- */
+  #topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:max(14px, env(safe-area-inset-top)) 20px 8px 20px;
+    z-index:5;
+  }
+  #dots{ display:flex; gap:8px; }
+  .dot{
+    width:12px; height:12px; border-radius:50%;
+    background:#E7E1F5; transition:all .35s ease;
+  }
+  .dot.active{ background:var(--berry); transform:scale(1.35); }
+  .dot.done{ background:var(--grass); }
+  #soundToggle{
+    width:44px; height:44px; border-radius:50%;
+    border:none; background:#FFFFFFcc; box-shadow:0 3px 10px rgba(43,34,80,0.12);
+    font-size:20px; display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+
+  /* ---------- stage ---------- */
+  #stage{
+    position:relative;
+    flex:1;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+
+  #guideLetter{
+    position:absolute;
+    font-family:'Baloo 2', sans-serif;
+    font-weight:800;
+    font-size:min(62vh, 60vw);
+    line-height:1;
+    color:var(--berry);
+    opacity:0.14;
+    user-select:none;
+    pointer-events:none;
+    transition:opacity .3s ease;
+  }
+
+  canvas#draw{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    touch-action:none;
+  }
+
+  #prompt{
+    position:absolute;
+    bottom:6%;
+    left:0; right:0;
+    text-align:center;
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    font-size:clamp(20px, 4.5vw, 30px);
+    color:var(--ink);
+    opacity:0.75;
+    pointer-events:none;
+    animation:bob 2.2s ease-in-out infinite;
+  }
+  @keyframes bob{
+    0%,100%{ transform:translateY(0); }
+    50%{ transform:translateY(-6px); }
+  }
+
+  #fingerHint{
+    position:absolute;
+    font-size:clamp(40px,10vw,64px);
+    pointer-events:none;
+    animation:swipeHint 2.4s ease-in-out infinite;
+    filter:drop-shadow(0 4px 10px rgba(0,0,0,0.15));
+  }
+  @keyframes swipeHint{
+    0%{ transform:translate(-40px,30px) rotate(-8deg); opacity:0; }
+    15%{ opacity:1; }
+    50%{ transform:translate(40px,-30px) rotate(8deg); opacity:1; }
+    85%{ opacity:0; }
+    100%{ transform:translate(-40px,30px) rotate(-8deg); opacity:0; }
+  }
+
+  /* ---------- celebration ---------- */
+  #celebrate{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:6px;
+    opacity:0; pointer-events:none;
+    transform:scale(0.85);
+    transition:opacity .35s ease, transform .35s cubic-bezier(.34,1.56,.64,1);
+  }
+  #celebrate.show{
+    opacity:1; transform:scale(1); pointer-events:auto;
+  }
+  #bigEmoji{
+    font-size:min(36vh, 42vw);
+    line-height:1;
+    filter:drop-shadow(0 12px 22px rgba(43,34,80,0.25));
+    animation:pop .55s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes pop{
+    0%{ transform:scale(0) rotate(-15deg); }
+    60%{ transform:scale(1.15) rotate(6deg); }
+    100%{ transform:scale(1) rotate(0); }
+  }
+  #bigLetterWord{
+    display:flex; align-items:baseline; gap:18px;
+  }
+  #bigLetter{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:800;
+    font-size:clamp(48px, 12vw, 110px);
+  }
+  #bigWord{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    font-size:clamp(28px, 7vw, 58px);
+    text-transform:capitalize;
+  }
+
+  .confetti{
+    position:absolute;
+    top:-10%;
+    border-radius:3px;
+    pointer-events:none;
+    animation-name:fall;
+    animation-timing-function:cubic-bezier(.2,.6,.3,1);
+    animation-fill-mode:forwards;
+  }
+  @keyframes fall{
+    0%{ transform:translateY(0) rotate(0deg); opacity:1; }
+    100%{ transform:translateY(115vh) rotate(540deg); opacity:0; }
+  }
+
+  #startOverlay{
+    position:absolute; inset:0;
+    background:linear-gradient(160deg, var(--sky), var(--berry));
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:18px; z-index:20; text-align:center; padding:24px;
+    transition:opacity .5s ease, visibility .5s;
+  }
+  #startOverlay h1{
+    font-family:'Baloo 2', sans-serif;
+    font-size:clamp(34px, 8vw, 56px);
+    color:#fff; margin:0;
+    text-shadow:0 4px 0 rgba(0,0,0,0.12);
+  }
+  #startOverlay p{
+    font-size:clamp(16px,3.6vw,20px);
+    color:#fffbe8; max-width:420px; margin:0; font-weight:700;
+  }
+  #startBtn{
+    margin-top:8px;
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    font-size:clamp(20px,4.5vw,26px);
+    color:var(--ink);
+    background:var(--sun);
+    border:none;
+    padding:18px 46px;
+    border-radius:60px;
+    box-shadow:0 8px 0 #e0a71f, 0 14px 24px rgba(0,0,0,0.18);
+    cursor:pointer;
+    animation:pulseBtn 1.6s ease-in-out infinite;
+  }
+  #startBtn:active{ transform:translateY(6px); box-shadow:0 2px 0 #e0a71f; }
+  @keyframes pulseBtn{
+    0%,100%{ transform:scale(1); }
+    50%{ transform:scale(1.05); }
+  }
+  #startOverlay.hidden{ opacity:0; visibility:hidden; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="topbar">
+    <div id="dots"></div>
+    <button id="soundToggle" aria-label="Toggle sound">🔊</button>
+  </div>
+
+  <div id="stage">
+    <div id="guideLetter">A</div>
+    <canvas id="draw"></canvas>
+    <div id="fingerHint">👆</div>
+    <div id="prompt">Trace the letter with your finger!</div>
+
+    <div id="celebrate">
+      <div id="bigEmoji">🍎</div>
+      <div id="bigLetterWord">
+        <div id="bigLetter">A</div>
+        <div id="bigWord">apple</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="startOverlay">
+    <h1>Trace &amp; Discover</h1>
+    <p>Draw any letter shape on the screen with your finger — watch it come to life! ✨</p>
+    <button id="startBtn">Let's Play!</button>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- content set ----------
+  const LETTERS = [
+    { letter:"A", word:"apple",    emoji:"🍎", bg1:"#FFC93C", bg2:"#FF6F59" },
+    { letter:"B", word:"ball",     emoji:"⚽", bg1:"#4FD3DA", bg2:"#B980F0" },
+    { letter:"C", word:"cat",      emoji:"🐱", bg1:"#FFC93C", bg2:"#8AC926" },
+    { letter:"D", word:"duck",     emoji:"🦆", bg1:"#4FD3DA", bg2:"#FFC93C" },
+    { letter:"E", word:"elephant", emoji:"🐘", bg1:"#B980F0", bg2:"#4FD3DA" },
+    { letter:"F", word:"fish",     emoji:"🐟", bg1:"#4FD3DA", bg2:"#FF6F59" },
+    { letter:"G", word:"grapes",   emoji:"🍇", bg1:"#B980F0", bg2:"#FF6F59" },
+    { letter:"H", word:"house",    emoji:"🏠", bg1:"#FFC93C", bg2:"#4FD3DA" },
+    { letter:"I", word:"ice cream",emoji:"🍦", bg1:"#FF6F59", bg2:"#FFC93C" },
+    { letter:"J", word:"juice",    emoji:"🧃", bg1:"#8AC926", bg2:"#4FD3DA" }
+  ];
+
+  let idx = 0;
+  let muted = false;
+  let drawing = false;
+  let inkDistance = 0;
+  let lastX = 0, lastY = 0;
+  let celebrating = false;
+  const TRIGGER_DISTANCE = 480; // total finger travel needed to "complete" a letter
+
+  const el = {
+    app: document.getElementById('app'),
+    dots: document.getElementById('dots'),
+    guideLetter: document.getElementById('guideLetter'),
+    canvas: document.getElementById('draw'),
+    prompt: document.getElementById('prompt'),
+    fingerHint: document.getElementById('fingerHint'),
+    celebrate: document.getElementById('celebrate'),
+    bigEmoji: document.getElementById('bigEmoji'),
+    bigLetter: document.getElementById('bigLetter'),
+    bigWord: document.getElementById('bigWord'),
+    soundToggle: document.getElementById('soundToggle'),
+    startOverlay: document.getElementById('startOverlay'),
+    startBtn: document.getElementById('startBtn')
+  };
+
+  const ctx = el.canvas.getContext('2d');
+
+  function resizeCanvas(){
+    const rect = el.canvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    el.canvas.width = rect.width * dpr;
+    el.canvas.height = rect.height * dpr;
+    el.canvas.style.width = rect.width + "px";
+    el.canvas.style.height = rect.height + "px";
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  // ---------- progress dots ----------
+  function buildDots(){
+    el.dots.innerHTML = "";
+    LETTERS.forEach((_, i)=>{
+      const d = document.createElement('div');
+      d.className = 'dot';
+      el.dots.appendChild(d);
+    });
+    updateDots();
+  }
+  function updateDots(){
+    [...el.dots.children].forEach((d,i)=>{
+      d.classList.toggle('active', i===idx);
+      d.classList.toggle('done', i<idx);
+    });
+  }
+
+  // ---------- letter setup ----------
+  function loadLetter(){
+    const item = LETTERS[idx];
+    el.guideLetter.textContent = item.letter;
+    el.bigLetter.textContent = item.letter;
+    el.bigWord.textContent = item.word;
+    el.bigEmoji.textContent = item.emoji;
+    el.app.style.background =
+      `radial-gradient(circle at 12% 8%, ${hexA(item.bg1,0.30)}, transparent 42%),` +
+      `radial-gradient(circle at 88% 85%, ${hexA(item.bg2,0.28)}, transparent 46%),` +
+      `var(--cloud)`;
+    clearCanvas();
+    inkDistance = 0;
+    el.guideLetter.style.opacity = 0.14;
+    el.prompt.style.opacity = 0.75;
+    el.fingerHint.style.display = 'block';
+    updateDots();
+  }
+  function hexA(hex, a){
+    const c = hex.replace('#','');
+    const r = parseInt(c.substring(0,2),16);
+    const g = parseInt(c.substring(2,4),16);
+    const b = parseInt(c.substring(4,6),16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  function clearCanvas(){
+    ctx.clearRect(0,0,el.canvas.width,el.canvas.height);
+  }
+
+  // ---------- drawing ----------
+  function pointerPos(e){
+    const rect = el.canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  function startDraw(e){
+    if(celebrating) return;
+    drawing = true;
+    el.fingerHint.style.display = 'none';
+    const p = pointerPos(e);
+    lastX = p.x; lastY = p.y;
+    const item = LETTERS[idx];
+    ctx.strokeStyle = item.bg2;
+    ctx.lineWidth = 16;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  }
+  function moveDraw(e){
+    if(!drawing || celebrating) return;
+    const p = pointerPos(e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    const dx = p.x - lastX, dy = p.y - lastY;
+    inkDistance += Math.hypot(dx, dy);
+    lastX = p.x; lastY = p.y;
+
+    if(inkDistance > TRIGGER_DISTANCE){
+      drawing = false;
+      celebrate();
+    }
+  }
+  function endDraw(){
+    drawing = false;
+  }
+
+  el.canvas.addEventListener('pointerdown', e=>{ el.canvas.setPointerCapture(e.pointerId); startDraw(e); });
+  el.canvas.addEventListener('pointermove', moveDraw);
+  el.canvas.addEventListener('pointerup', endDraw);
+  el.canvas.addEventListener('pointercancel', endDraw);
+
+  // ---------- celebration ----------
+  function celebrate(){
+    celebrating = true;
+    const item = LETTERS[idx];
+    el.guideLetter.style.opacity = 0;
+    el.prompt.style.opacity = 0;
+    spawnConfetti(item.bg1, item.bg2);
+    el.celebrate.classList.add('show');
+    speak(`${item.letter}! ${item.letter} is for ${item.word}!`);
+
+    setTimeout(()=>{
+      el.celebrate.classList.remove('show');
+      setTimeout(()=>{
+        idx = (idx+1) % LETTERS.length;
+        loadLetter();
+        celebrating = false;
+      }, 400);
+    }, 2600);
+  }
+
+  function spawnConfetti(c1, c2){
+    const colors = [c1, c2, '#FFC93C', '#8AC926', '#4FD3DA'];
+    for(let i=0;i<28;i++){
+      const p = document.createElement('div');
+      p.className = 'confetti';
+      const size = 6 + Math.random()*8;
+      p.style.width = size+'px';
+      p.style.height = (size*1.4)+'px';
+      p.style.left = (Math.random()*100)+'%';
+      p.style.background = colors[Math.floor(Math.random()*colors.length)];
+      const dur = 1.6 + Math.random()*1.2;
+      const delay = Math.random()*0.4;
+      p.style.animationDuration = dur+'s';
+      p.style.animationDelay = delay+'s';
+      el.app.appendChild(p);
+      setTimeout(()=>p.remove(), (dur+delay)*1000 + 200);
+    }
+  }
+
+  // ---------- speech ----------
+  function speak(text){
+    if(muted) return;
+    if(!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.pitch = 1.3;
+    u.rate = 0.85;
+    u.volume = 1;
+    window.speechSynthesis.speak(u);
+  }
+
+  el.soundToggle.addEventListener('click', ()=>{
+    muted = !muted;
+    el.soundToggle.textContent = muted ? '🔇' : '🔊';
+    if(muted) window.speechSynthesis.cancel();
+  });
+
+  // ---------- start ----------
+  el.startBtn.addEventListener('click', ()=>{
+    el.startOverlay.classList.add('hidden');
+    // a little primer sound so mobile browsers unlock audio
+    speak("Let's learn!");
+  }, { once:true });
+
+  // ---------- init ----------
+  buildDots();
+  resizeCanvas();
+  loadLetter();
+
+})();
+</script>
+</body>
+</html>
